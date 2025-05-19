@@ -11,6 +11,8 @@ public class MyFilter3 implements Filter {
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
+        System.out.println("필터3");
+
         HttpServletRequest req = (HttpServletRequest) request;
         HttpServletResponse res = (HttpServletResponse) response;
 
@@ -29,7 +31,5 @@ public class MyFilter3 implements Filter {
                 out.println("인증 안됨");
             }
         }
-
-        System.out.println("필터1");
     }
 }
