@@ -1,5 +1,8 @@
 package com.cos.jwt.jwt;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
+import com.cos.jwt.auth.PrincipalDetails;
 import com.cos.jwt.request.Signin;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
@@ -14,6 +17,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import java.io.IOException;
+import java.util.Date;
 
 // 스프링 시큐리티에 UsernamePasswordAuthenticationFilter가 있음.
 // formLogin에서는 POST /login 요청해서 username, password 전송하면
@@ -53,6 +57,20 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
      */
     @Override
     protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication authResult) throws IOException, ServletException {
-        super.successfulAuthentication(request, response, chain, authResult);
+        PrincipalDetails principalDetails = (PrincipalDetails) authResult.getPrincipal();
+
+        /**
+         *  username, password --> 로그인 정상 --> JWT 토큰을 생성 --> Client로 JWT 토큰을 응답
+         *  요청할 때 마다 JWT토큰을 가지고 요청
+         *  서버는 JWT토큰이 유효한지를 판단 (필터 필요)
+         */
+        String jwtToken = JWT.create()
+                .withSubject("cos토큰")
+                .withExpiresAt(new Date(System.currentTimeMillis() + (1000 * 60 * 10)))
+                .withClaim("id", principalDetails.getUser().getId())
+                .withClaim("username", principalDetails.getUser().getUsername())
+                .sign(Algorithm.HMAC512("cos"));
+
+        response.addHeader("Authorization", "Bearer " + jwtToken);
     }
 }
