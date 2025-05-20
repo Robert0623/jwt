@@ -65,10 +65,10 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
          *  서버는 JWT토큰이 유효한지를 판단 (필터 필요)
          */
         String jwtToken = JWT.create()
-                .withSubject("cos토큰")
+                .withSubject(principalDetails.getUser().getId().toString())
                 .withExpiresAt(new Date(System.currentTimeMillis() + (1000 * 60 * 10)))
-                .withClaim("id", principalDetails.getUser().getId())
                 .withClaim("username", principalDetails.getUser().getUsername())
+                .withClaim("roles", principalDetails.getUser().getRoles())
                 .sign(Algorithm.HMAC512("cos"));
 
         response.addHeader("Authorization", "Bearer " + jwtToken);
