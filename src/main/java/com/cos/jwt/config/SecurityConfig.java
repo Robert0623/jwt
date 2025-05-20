@@ -1,13 +1,16 @@
 package com.cos.jwt.config;
 
 import com.cos.jwt.jwt.JwtAuthenticationFilter;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.filter.CorsFilter;
 
@@ -17,10 +20,20 @@ import org.springframework.web.filter.CorsFilter;
 public class SecurityConfig {
 
     private final CorsFilter corsFilter;
+    private final ObjectMapper objectMapper;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        AuthenticationManager authenticationManager = http.getSharedObject(AuthenticationManager.class);
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
+        return authConfig.getAuthenticationManager();
+    }
+
+    @Bean
+    public BCryptPasswordEncoder bCryptPasswordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationManager authenticationManager) throws Exception {
 
         return http
                 // .addFilterBefore(new MyFilter3(), SecurityContextPersistenceFilter.class)
@@ -29,7 +42,7 @@ public class SecurityConfig {
                 .sessionManagement(s -> s
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilter(corsFilter) // @CrossOrigin(인증 X) -> Controller에 사용, addFilter(인증 O) -> 시큐리티 필터에 등록
-                .addFilter(new JwtAuthenticationFilter(authenticationManager)) // AuthenticationManager
+                .addFilter(new JwtAuthenticationFilter(authenticationManager, objectMapper)) // AuthenticationManager
                 .formLogin(f -> f
                         .disable())
                 .httpBasic(h -> h
