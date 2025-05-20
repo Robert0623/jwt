@@ -3,6 +3,7 @@ package com.cos.jwt.config;
 import com.cos.jwt.UserRepository;
 import com.cos.jwt.jwt.JwtAuthenticationFilter;
 import com.cos.jwt.jwt.JwtAuthorizationFilter;
+import com.cos.jwt.jwt.JwtProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -24,6 +25,7 @@ public class SecurityConfig {
     private final CorsFilter corsFilter;
     private final ObjectMapper objectMapper;
     private final UserRepository userRepository;
+    private final JwtProperties jwtProperties;
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
@@ -45,8 +47,8 @@ public class SecurityConfig {
                 .sessionManagement(s -> s
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilter(corsFilter) // @CrossOrigin(인증 X) -> Controller에 사용, addFilter(인증 O) -> 시큐리티 필터에 등록
-                .addFilter(new JwtAuthenticationFilter(authenticationManager, objectMapper)) // AuthenticationManager
-                .addFilter(new JwtAuthorizationFilter(authenticationManager, userRepository))
+                .addFilter(new JwtAuthenticationFilter(authenticationManager, objectMapper, jwtProperties)) // AuthenticationManager
+                .addFilter(new JwtAuthorizationFilter(authenticationManager, userRepository, jwtProperties))
                 .formLogin(f -> f
                         .disable())
                 .httpBasic(h -> h

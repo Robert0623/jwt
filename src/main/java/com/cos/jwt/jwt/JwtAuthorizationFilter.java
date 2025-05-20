@@ -26,10 +26,12 @@ import java.io.IOException;
 public class JwtAuthorizationFilter extends BasicAuthenticationFilter {
 
     private final UserRepository userRepository;
+    private final JwtProperties jwtProperties;
 
-    public JwtAuthorizationFilter(AuthenticationManager authenticationManager, UserRepository userRepository) {
+    public JwtAuthorizationFilter(AuthenticationManager authenticationManager, UserRepository userRepository, JwtProperties jwtProperties) {
         super(authenticationManager);
         this.userRepository = userRepository;
+        this.jwtProperties = jwtProperties;
     }
 
     // 권한 or 인증이 필요한 주소 요청이 있을 때 해당 필터를 탐
@@ -37,19 +39,19 @@ public class JwtAuthorizationFilter extends BasicAuthenticationFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws IOException, ServletException {
         System.out.println("권한이나 인증이 필요한 주소 요청이 됨.");
 
-        String jwtHeader = request.getHeader("Authorization");
+        String jwtHeader = request.getHeader(jwtProperties.getHeaderString());
         System.out.println("jwtHeader = " + jwtHeader);
 
         // header가 있는지 확인
-        if (jwtHeader == null || !jwtHeader.startsWith("Bearer")) {
+        if (jwtHeader == null || !jwtHeader.startsWith(jwtProperties.getTokenPrefix())) {
             chain.doFilter(request, response);
             return;
         }
 
         // JWT 토큰을 검증해서 정상적인 사용자인지 확인
-        String jwtToken = request.getHeader("Authorization").replace("Bearer ", "");
+        String jwtToken = request.getHeader(jwtProperties.getHeaderString()).replace(jwtProperties.getTokenPrefix() + " ", "");
         String username = JWT
-                .require(Algorithm.HMAC512("cos"))
+                .require(Algorithm.HMAC512(jwtProperties.getSecretKey()))
                 .build()
                 .verify(jwtToken)
                 .getClaim("username")

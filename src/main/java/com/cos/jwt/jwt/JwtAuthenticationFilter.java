@@ -4,20 +4,25 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.cos.jwt.auth.PrincipalDetails;
 import com.cos.jwt.request.Signin;
+import com.cos.jwt.response.SigninResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import java.io.IOException;
 import java.util.Date;
+import java.util.List;
+import java.util.stream.Collectors;
 
 // 스프링 시큐리티에 UsernamePasswordAuthenticationFilter가 있음.
 // formLogin에서는 POST /login 요청해서 username, password 전송하면
@@ -28,6 +33,7 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 
     private final AuthenticationManager authenticationManager;
     private final ObjectMapper objectMapper;
+    private final JwtProperties jwtProperties;
 
     // POST /login 요청을 하면 로그인 시도를 위해서 실행되는 함수
     @Override
@@ -58,6 +64,9 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
     @Override
     protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication authResult) throws IOException, ServletException {
         PrincipalDetails principalDetails = (PrincipalDetails) authResult.getPrincipal();
+        List<String> roles = principalDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toList());
 
         /**
          *  username, password --> 로그인 정상 --> JWT 토큰을 생성 --> Client로 JWT 토큰을 응답
@@ -65,12 +74,27 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
          *  서버는 JWT토큰이 유효한지를 판단 (필터 필요)
          */
         String jwtToken = JWT.create()
-                .withSubject(principalDetails.getUser().getId().toString())
-                .withExpiresAt(new Date(System.currentTimeMillis() + (1000 * 60 * 10)))
-                .withClaim("username", principalDetails.getUser().getUsername())
-                .withClaim("roles", principalDetails.getUser().getRoles())
-                .sign(Algorithm.HMAC512("cos"));
+                .withSubject(principalDetails.getUserId().toString())
+                .withExpiresAt(new Date(System.currentTimeMillis() + jwtProperties.getExpirationTime()))
+                .withClaim("username", principalDetails.getUsername())
+                .withClaim("roles", roles)
+                .sign(Algorithm.HMAC512(jwtProperties.getSecretKey()));
 
-        response.addHeader("Authorization", "Bearer " + jwtToken);
+        response.addHeader(jwtProperties.getHeaderString(), jwtProperties.getTokenPrefix() + " " + jwtToken);
+
+        SigninResponse userInfo = SigninResponse.builder()
+                .id(principalDetails.getUserId())
+                .username(principalDetails.getUsername())
+                .roles(roles)
+                .message("로그인 성공")
+                .accessToken(jwtToken)
+                .tokenType(jwtProperties.getTokenPrefix())
+                .expiresMilliSeconds(jwtProperties.getExpirationTime())
+                .build();
+
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("utf-8");
+
+        objectMapper.writeValue(response.getWriter(), userInfo);
     }
 }
